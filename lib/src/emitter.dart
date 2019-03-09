@@ -93,6 +93,7 @@ class DartEmitter extends Object
   @override
   visitClass(Class spec, [StringSink output]) {
     output ??= StringBuffer();
+
     spec.docs.forEach(output.writeln);
     spec.annotations.forEach((a) => visitAnnotation(a, output));
     if (spec.abstract) {
@@ -133,7 +134,30 @@ class DartEmitter extends Object
       output.writeln();
     });
     output.writeln(' }');
-    return output;
+
+    final StringSink outputImport = StringBuffer();
+    final directives = <Directive>[]
+      ..addAll(allocator.imports);
+
+    if (orderDirectives) {
+      directives.sort();
+    }
+
+    Directive previous;
+    for (final directive in directives) {
+      if (_newLineBetween(orderDirectives, previous, directive)) {
+        // Note: dartfmt handles creating new lines between directives.
+        // 2 lines are written here. The first one comes after the previous
+        // directive `;`, the second is the empty line.
+        outputImport..writeln()..writeln();
+      }
+      directive.accept(this, outputImport);
+      previous = directive;
+    }
+
+    outputImport.writeln(output);
+
+    return outputImport;
   }
 
   @override
